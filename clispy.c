@@ -1,6 +1,9 @@
-#include <stdio.h>
+#include <stdio.h>   /* printf */
+#include <stdlib.h>  /* free */
 
-static char input[2048];
+#include <editline/readline.h> /* readline */
+#include <editline/history.h>  /* add_history */
+
 
 int main (int argc, char** argv) {
 
@@ -9,11 +12,13 @@ int main (int argc, char** argv) {
 
   while (1) {
 
-    fputs("lispy> ", stdout);
+    char* input = readline("lispy> ");
 
-    fgets(input, 2048, stdin);
+    add_history(input);
 
     printf("No you're a %s", input);
+
+    free(input);
   }
 
   return 0;
