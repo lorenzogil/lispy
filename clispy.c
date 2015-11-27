@@ -7,7 +7,7 @@
 #include "mpc.h"
 
 /* Enumeration of possible lval types */
-enum { LVAL_ERR, LVAL_NUM, LVAL_SYM, LVAL_SEXPR };
+enum { LVAL_ERR, LVAL_NUM, LVAL_SYM, LVAL_SEXPR, LVAL_QEXPR };
 
 typedef struct lval {
   int type;
@@ -50,6 +50,14 @@ lval* lval_sexpr (void) {
   return v;
 }
 
+lval* lval_qexpr (void) {
+  lval* v = malloc(sizeof(lval));
+  v->type = LVAL_QEXPR;
+  v->count = 0;
+  v->cell = NULL;
+  return v;
+}
+
 void lval_del (lval* v) {
   switch (v->type) {
   case LVAL_NUM:
@@ -64,10 +72,12 @@ void lval_del (lval* v) {
     break;
 
   case LVAL_SEXPR:
+  case LVAL_QEXPR:
     for (int i=0; i < v->count; i++) {
       lval_del(v->cell[i]);
     }
     free(v->cell);
+    break;
   }
 
   free(v);
@@ -99,6 +109,8 @@ lval* lval_read(mpc_ast_t* t) {
 
   if (strcmp(t->tag, ">") == 0 || strstr(t->tag, "sexpr")) {
     x = lval_sexpr();
+  } else if (strstr(t->tag, "qexpr")) {
+    x = lval_qexpr();
   }
 
   for (int i=0; i < t->children_num; i++) {
@@ -155,6 +167,9 @@ void lval_print (lval* v) {
   case LVAL_SEXPR:
     lval_expr_print(v, '(', ')');
     break;
+
+  case LVAL_QEXPR:
+    lval_expr_print(v, '{', '}');
   }
 }
 
@@ -280,18 +295,20 @@ int main (int argc, char** argv) {
   mpc_parser_t* Number = mpc_new("number");
   mpc_parser_t* Symbol = mpc_new("symbol");
   mpc_parser_t* Sexpr = mpc_new("sexpr");
+  mpc_parser_t* Qexpr = mpc_new("qexpr");
   mpc_parser_t* Expr = mpc_new("expr");
   mpc_parser_t* Lispy = mpc_new("lispy");
 
   /* Define the parsers with a language */
   mpca_lang(MPCA_LANG_DEFAULT,
-    "                                       \
-      number : /-?[0-9]+/ ;                 \
-      symbol: '+' | '-' | '*' | '/' ;       \
-      sexpr: '(' <expr>* ')' ;              \
-      expr: <number> | <symbol> | <sexpr> ; \
-      lispy: /^/ <expr>* /$/ ;              \
-    ", Number, Symbol, Sexpr, Expr, Lispy);
+    "                                                 \
+      number : /-?[0-9]+/ ;                           \
+      symbol: '+' | '-' | '*' | '/' ;                 \
+      sexpr: '(' <expr>* ')' ;                        \
+      qexpr: '{' <expr>* '}' ;                        \
+      expr: <number> | <symbol> | <sexpr> | <qexpr> ; \
+      lispy: /^/ <expr>* /$/ ;                        \
+    ", Number, Symbol, Sexpr, Qexpr, Expr, Lispy);
 
   puts("Lispy Version 0.0.0.0.5");
   puts("Press Ctrl+c to Exit\n");
@@ -316,7 +333,7 @@ int main (int argc, char** argv) {
     free(input);
   }
 
-  mpc_cleanup(4, Number, Symbol, Sexpr, Expr, Lispy);
+  mpc_cleanup(4, Number, Symbol, Sexpr, Qexpr, Expr, Lispy);
 
   return 0;
 }
