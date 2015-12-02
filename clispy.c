@@ -132,7 +132,7 @@ void lval_del (lval* v) {
 lval* lval_read_num (mpc_ast_t* t) {
   errno = 0;
   long x = strtol(t->contents, NULL, 10);
-  return errno != ERANGE ? lval_num(x) : lval_err("invalid number");
+  return errno != ERANGE ? lval_num(x) : lval_err("invalid number: %s", t->contents);
 }
 
 lval* lval_add (lval* v, lval* x) {
@@ -426,7 +426,10 @@ lval* builtin_op(lenv* e, lval* a, char* op) {
   for (int i=0; i < a->count; i++) {
     if (a->cell[i]->type != LVAL_NUM) {
       lval_del(a);
-      return lval_err("Cannot operate on non-number!");
+      return lval_err("Cannot operate on non-number. "
+		      "Got %s, Expected %s",
+		      ltype_name(a->cell[i]->type),
+		      ltype_name(LVAL_NUM));
     }
   }
 
@@ -484,19 +487,25 @@ lval* builtin_div (lenv* e, lval* a) {
 
 lval* builtin_def (lenv* e, lval* a) {
   LASSERT(a, a->cell[0]->type == LVAL_QEXPR,
-	  "Function 'def' passed incorrect type!");
+	  "Function 'def' passed incorrect type for argument 0. "
+	  "Got %s, Expected %s.",
+	  ltype_name(a->cell[0]->type), ltype_name(LVAL_QEXPR));
 
   lval* syms = a->cell[0];
 
   /* Ensure all elements of first list are symbols */
   for (int i=0; i < syms->count; i++) {
     LASSERT(a, syms->cell[i]->type == LVAL_SYM,
-	    "Function 'def' cannot define non-symbol");
+	    "Function 'def' cannot define non-symbol for argument %i. "
+	    "Got %s, Expected %s.",
+	    i, ltype_name(a->cell[i]->type), ltype_name(LVAL_SYM));
   }
 
   /* Check correct number of symbols and values */
   LASSERT(a, syms->count == a->count - 1,
-	  "Function 'def' cannot define incorrect number of values to symbols");
+	  "Function 'def' cannot define incorrect number of values to symbols ."
+	  "Got %i symbols, Expected %i symbols",
+	  syms->count, a->count - 1);
 
   /* Assign copies of values to symbols */
   for (int i=0; i < syms->count; i++) {
@@ -551,7 +560,9 @@ lval* lval_eval_sexpr(lenv* e, lval* v) {
   if (f->type != LVAL_FUN) {
     lval_del(f);
     lval_del(v);
-    return lval_err("S-expression does not start with a function!");
+    return lval_err("S-expression does not start with a function ."
+		    "Got %s, Expected %s",
+		    ltype_name(f->type), ltype_name(LVAL_FUN));
   }
 
   lval* result = f->fun(e, v);
