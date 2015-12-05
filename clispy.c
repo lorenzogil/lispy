@@ -22,7 +22,7 @@
 #define LASSERT_NUM(func, args, num) \
   LASSERT(args, args->count == num, \
     "Function '%s' passed incorrect number of arguments. " \
-    "Got %i, Expected %i." \
+    "Got %i, Expected %i.", \
     func, args->count, num)
 
 #define LASSERT_NON_EMPTY(func, args, index) \
@@ -415,6 +415,43 @@ lval* lval_call (lenv* e, lval* f, lval* a) {
   }
 }
 
+int lval_eq(lval* x, lval* y) {
+  if (x->type != y->type) {
+    return 0;
+  }
+
+  switch (x->type) {
+  case LVAL_NUM:
+    return (x->num == y->num);
+
+  case LVAL_ERR:
+    return (strcmp(x->err, y->err) == 0);
+  case LVAL_SYM:
+    return (strcmp(x->sym, y->sym) == 0);
+
+  case LVAL_FUN:
+    if (x->builtin || y->builtin) {
+      return (x->builtin == y->builtin);
+    } else {
+      return (lval_eq(x->formals, y->formals) && lval_eq(x->body, y->body));
+    }
+
+  case LVAL_QEXPR:
+  case LVAL_SEXPR:
+    if (x->count != y->count) {
+      return 0;
+    } else {
+      for (int i=0; i < x->count; i++) {
+	if (!lval_eq(x->cell[i], y->cell[i])) {
+	  return 0;
+	}
+      }
+      return 1;
+    }
+  }
+  return 0;
+}
+
 lenv* lenv_new (void) {
   lenv* e = malloc(sizeof(lenv));
   e->par = NULL;
@@ -644,6 +681,86 @@ lval* builtin_div (lenv* e, lval* a) {
   return builtin_op(e, a, "/");
 }
 
+lval* builtin_ord (lenv* e, lval* a, char* op) {
+  LASSERT_NUM(op, a, 2);
+  LASSERT_TYPE(op, a, 0, LVAL_NUM);
+  LASSERT_TYPE(op, a, 1, LVAL_NUM);
+
+  int r;
+  int first = a->cell[0]->num;
+  int second = a->cell[1]->num;
+
+  if (strcmp(op, ">") == 0) {
+    r = first > second;
+  } else if (strcmp(op, "<") == 0) {
+    r = first < second;
+  } else if (strcmp(op, ">=") == 0) {
+    r = first >= second;
+  } else if (strcmp(op, "<=") == 0) {
+    r = first <= second;
+  }
+
+  lval_del(a);
+  return lval_num(r);
+}
+
+lval* builtin_gt (lenv* e, lval* a) {
+  return builtin_ord(e, a, ">");
+}
+
+lval* builtin_lt (lenv* e, lval* a) {
+  return builtin_ord(e, a, "<");
+}
+
+lval* builtin_ge (lenv* e, lval* a) {
+  return builtin_ord(e, a, ">=");
+}
+
+lval* builtin_le (lenv* e, lval* a) {
+  return builtin_ord(e, a, "<=");
+}
+
+lval* builtin_cmp (lenv* e, lval* a, char* op) {
+  LASSERT_NUM(op, a, 2);
+  int r;
+  if (strcmp(op, "==") == 0) {
+    r = lval_eq(a->cell[0], a->cell[1]);
+  } else if (strcmp(op, "!=") == 0) {
+    r = !lval_eq(a->cell[0], a->cell[1]);
+  }
+
+  lval_del(a);
+  return lval_num(r);
+}
+
+lval* builtin_eq (lenv* e, lval* a) {
+  return builtin_cmp(e, a, "==");
+}
+
+lval* builtin_ne (lenv* e, lval* a) {
+  return builtin_cmp(e, a, "!=");
+}
+
+lval* builtin_if (lenv* e, lval* a) {
+  LASSERT_NUM("if", a, 3);
+  LASSERT_TYPE("if", a, 0, LVAL_NUM);
+  LASSERT_TYPE("if", a, 1, LVAL_QEXPR);
+  LASSERT_TYPE("if", a, 2, LVAL_QEXPR);
+
+  lval* r;
+  a->cell[1]->type = LVAL_SEXPR;
+  a->cell[2]->type = LVAL_SEXPR;
+
+  if (a->cell[0]->num) {
+    r = lval_eval(e, lval_pop(a, 1));
+  } else {
+    r = lval_eval(e, lval_pop(a, 2));
+  }
+
+  lval_del(a);
+  return r;
+}
+
 lval* builtin_var (lenv* e, lval* a, char* func) {
   LASSERT_TYPE(func, a, 0, LVAL_QEXPR);
 
@@ -718,6 +835,14 @@ void lenv_add_builtins (lenv* e) {
 
   lenv_add_builtin(e, "\\", builtin_lambda);
   lenv_add_builtin(e, "def", builtin_def);
+
+  lenv_add_builtin(e, "if", builtin_if);
+  lenv_add_builtin(e, "==", builtin_eq);
+  lenv_add_builtin(e, "!=", builtin_ne);
+  lenv_add_builtin(e, ">", builtin_gt);
+  lenv_add_builtin(e, "<", builtin_lt);
+  lenv_add_builtin(e, ">=", builtin_ge);
+  lenv_add_builtin(e, "<=", builtin_le);
 }
 
 lval* lval_eval_sexpr(lenv* e, lval* v) {
@@ -792,7 +917,7 @@ int main (int argc, char** argv) {
       lispy  : /^/ <expr>* /$/ ;                         \
     ", Number, Symbol, Sexpr, Qexpr, Expr, Lispy);
 
-  puts("Lispy Version 0.0.0.0.8");
+  puts("Lispy Version 0.0.0.0.9");
   puts("Press Ctrl+c to Exit\n");
 
   lenv* e = lenv_new();
