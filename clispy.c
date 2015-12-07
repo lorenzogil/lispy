@@ -916,6 +916,17 @@ lval* builtin_load(lenv* e, lval* a) {
   }
 }
 
+lval* builtin_print(lenv* e, lval* a) {
+  for (int i=0; i < a->count; i++) {
+    lval_print(a->cell[i]);
+    putchar(' ');
+  }
+  putchar('\n');
+  lval_del(a);
+
+  return lval_sexpr();
+}
+
 void lenv_add_builtins (lenv* e) {
   lenv_add_builtin(e, "list", builtin_list);
   lenv_add_builtin(e, "head", builtin_head);
@@ -940,6 +951,7 @@ void lenv_add_builtins (lenv* e) {
   lenv_add_builtin(e, "<=", builtin_le);
 
   lenv_add_builtin(e, "load", builtin_load);
+  lenv_add_builtin(e, "print", builtin_print);
 }
 
 lval* lval_eval_sexpr(lenv* e, lval* v) {
@@ -1018,31 +1030,48 @@ int main (int argc, char** argv) {
       lispy  : /^/ <expr>* /$/ ;                                                \
     ", Number, Symbol, String, Comment, Sexpr, Qexpr, Expr, Lispy);
 
-  puts("Lispy Version 0.0.0.0.10");
-  puts("Press Ctrl+c to Exit\n");
-
   lenv* e = lenv_new();
   lenv_add_builtins(e);
 
-  while (1) {
+  if (argc >= 2) {
 
-    char* input = readline("lispy> ");
+    for (int i=1; i < argc; i++) {
+      lval* args = lval_add(lval_sexpr(), lval_str(argv[i]));
+      lval* x = builtin_load(e, args);
 
-    add_history(input);
-
-    mpc_result_t r;
-    if (mpc_parse ("<stdin>", input, Lispy, &r)) {
-      lval* x = lval_eval(e, lval_read(r.output));
-      lval_println(x);
+      if (x->type == LVAL_ERR) {
+	lval_println(x);
+      }
       lval_del(x);
-
-      mpc_ast_delete(r.output);
-    } else {
-      mpc_err_print(r.error);
-      mpc_err_delete(r.error);
     }
 
-    free(input);
+  } else {
+
+    puts("Lispy Version 0.0.0.0.10");
+    puts("Press Ctrl+c to Exit\n");
+
+
+    while (1) {
+
+      char* input = readline("lispy> ");
+
+      add_history(input);
+
+      mpc_result_t r;
+      if (mpc_parse ("<stdin>", input, Lispy, &r)) {
+	lval* x = lval_eval(e, lval_read(r.output));
+	lval_println(x);
+	lval_del(x);
+
+	mpc_ast_delete(r.output);
+      } else {
+	mpc_err_print(r.error);
+	mpc_err_delete(r.error);
+      }
+
+      free(input);
+    }
+
   }
 
   lenv_del(e);
