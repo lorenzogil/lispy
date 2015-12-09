@@ -251,6 +251,7 @@ lval* lval_copy (lval* v) {
   case LVAL_STR:
     x->str = malloc(strlen(v->str) + 1);
     strcpy(x->str, v->str);
+    break;
   case LVAL_SEXPR:
   case LVAL_QEXPR:
     x->count = v->count;
