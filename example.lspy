@@ -1,0 +1,4 @@
+(load "prelude.lspy")
+
+(print "fib 10 is:")
+(print (fib 10))
