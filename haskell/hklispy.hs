@@ -34,8 +34,18 @@ opExpr = do
                      '*' -> Mul exprList
                      '/' -> Div exprList)
 
+parensExpr :: Parsec.Parsec String () Expr
+parensExpr = do
+  _ <- Parsec.char '('
+  result <- opExpr
+  _ <- Parsec.char ')'
+  return result
+
 expr :: Parsec.Parsec String () Expr
-expr =  numberExpr Parsec.<|> opExpr
+expr =  numberExpr Parsec.<|> parensExpr
+
+program :: Parsec.Parsec String () Expr
+program = opExpr
 
 parse rule text = Parsec.parse rule "(source)" text
 
