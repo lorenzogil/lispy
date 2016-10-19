@@ -24,40 +24,18 @@ negativeNumber = do
 numberExpr :: Parsec.Parsec String () Expr
 numberExpr = basicNumber Parsec.<|> negativeNumber
 
-addExpr :: Parsec.Parsec String () Expr
-addExpr = do
-  _ <- Parsec.char '+'
+opExpr :: Parsec.Parsec String () Expr
+opExpr = do
+  op <- Parsec.oneOf "+-*/"
   _ <- Parsec.spaces
   exprList <- Parsec.sepBy expr Parsec.spaces
-  return (Add exprList)
-
-subExpr :: Parsec.Parsec String () Expr
-subExpr = do
-  _ <- Parsec.char '-'
-  _ <- Parsec.spaces
-  exprList <- Parsec.sepBy expr Parsec.spaces
-  return (Sub exprList)
-
-mulExpr :: Parsec.Parsec String () Expr
-mulExpr = do
-  _ <- Parsec.char '*'
-  _ <- Parsec.spaces
-  exprList <- Parsec.sepBy expr Parsec.spaces
-  return (Mul exprList)
-
-divExpr :: Parsec.Parsec String () Expr
-divExpr = do
-  _ <- Parsec.char '/'
-  _ <- Parsec.spaces
-  exprList <- Parsec.sepBy expr Parsec.spaces
-  return (Div exprList)
+  return (case op of '+' -> Add exprList
+                     '-' -> Sub exprList
+                     '*' -> Mul exprList
+                     '/' -> Div exprList)
 
 expr :: Parsec.Parsec String () Expr
-expr =  numberExpr
-   Parsec.<|> addExpr
-   Parsec.<|> subExpr
-   Parsec.<|> mulExpr
-   Parsec.<|> divExpr
+expr =  numberExpr Parsec.<|> opExpr
 
 parse rule text = Parsec.parse rule "(source)" text
 
