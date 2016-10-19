@@ -28,7 +28,7 @@ opExpr :: Parsec.Parsec String () Expr
 opExpr = do
   op <- Parsec.oneOf "+-*/"
   _ <- Parsec.spaces
-  exprList <- Parsec.sepBy expr Parsec.spaces
+  exprList <- Parsec.sepBy1 expr Parsec.spaces
   return (case op of '+' -> Add exprList
                      '-' -> Sub exprList
                      '*' -> Mul exprList
