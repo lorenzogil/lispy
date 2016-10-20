@@ -1,8 +1,6 @@
 import qualified Text.Parsec as Parsec
 import System.IO
 
-
-
 data Expr = Lit Int
           | Add [Expr]
           | Sub [Expr]
@@ -47,15 +45,26 @@ expr =  numberExpr Parsec.<|> parensExpr
 program :: Parsec.Parsec String () Expr
 program = opExpr
 
-parse rule text = Parsec.parse rule "(source)" text
+parse :: String -> Maybe Expr
+parse text = case Parsec.parse program "(source)" text of
+                  Left _ -> Nothing
+                  Right e -> Just e
 
-parseInput :: [Char] -> [Char]
-parseInput x = x
+eval :: Expr -> Double
+eval ast = case ast of
+  Lit n -> fromIntegral n
+  Add exprList -> foldl (\acc i -> acc + eval i) 0 exprList
+  Sub exprList -> foldl (\acc i -> acc - eval i) (eval (head exprList)) (tail exprList)
+  Mul exprList -> foldl (\acc i -> acc * eval i) 1 exprList
+  Div exprList -> foldl (\acc i -> acc / eval i) (eval (head exprList)) (tail exprList)
 
 main :: IO ()
 main = do
   putStr "lispy> "
   hFlush stdout
   input <- getLine
-  putStrLn (parseInput input)
+  putStrLn (case parse input of
+                 Nothing -> "Error parsing input"
+                 Just ast -> show (eval ast))
   main
+
