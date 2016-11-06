@@ -44,29 +44,25 @@ program = do
   result <- (sepBy expr spaces) <* eof
   return (LVal result)
 
-sumExpr :: Expr -> Expr -> Expr
-sumExpr (Error e) _ = Error e
-sumExpr (Lit a) (Lit b) = Lit (a + b)
-sumExpr (Lit a) (LVal x) = sumExpr (Lit a) (eval (LVal x))
-sumExpr _ _ = Error "invalid arguments to Add"
+evalSum :: Int -> Int -> Expr
+evalSum a b = Lit (a + b)
 
-subExpr :: Expr -> Expr -> Expr
-subExpr (Error e) _ = Error e
-subExpr (Lit a) (Lit b) = Lit (a - b)
-subExpr (Lit a) (LVal x) = subExpr (Lit a) (eval (LVal x))
-subExpr _ _ = Error "invalid arguments to Sub"
+evalSub :: Int -> Int -> Expr
+evalSub a b = Lit (a - b)
 
-mulExpr :: Expr -> Expr -> Expr
-mulExpr (Error e) _ = Error e
-mulExpr (Lit a) (Lit b) = Lit (a * b)
-mulExpr (Lit a) (LVal x) = mulExpr (Lit a) (eval (LVal x))
-mulExpr _ _ = Error "invalid arguments to Mul"
+evalMul :: Int -> Int -> Expr
+evalMul a b = Lit (a * b)
 
-divExpr :: Expr -> Expr -> Expr
-divExpr (Error e) _ = Error e
-divExpr (Lit a) (Lit b) = Lit (a `div` b)
-divExpr (Lit a) (LVal x) = divExpr (Lit a) (eval (LVal x))
-divExpr _ _ = Error "invalid arguments to Div"
+evalDiv :: Int -> Int -> Expr
+evalDiv _ 0 = Error "division by zero"
+evalDiv a b = Lit (a `div` b)
+
+evalBinOp :: (Int -> Int -> Expr) -> Expr -> Expr -> Expr
+evalBinOp _ (Error e) _ = Error e
+evalBinOp _ _ (Error e) = Error e
+evalBinOp f (Lit a) (Lit b) = f a b
+evalBinOp f (Lit a) (LVal x) = evalBinOp f (Lit a) (eval (LVal x))
+evalBinOp _ _ _ = Error "invalid arguments to binary operator"
 
 eval :: Expr -> Expr
 eval (Lit a) = Lit a
@@ -75,10 +71,10 @@ eval (Symbol s) = Error ("no arguments for symbol " ++ show s)
 eval (LVal []) = Error "empty lval"
 eval (LVal [x]) = eval x
 eval (LVal (Symbol s:exprs)) = case s of
-  Add -> foldl sumExpr (Lit 0) exprs
-  Sub -> foldl subExpr (head exprs) (tail exprs)
-  Mul -> foldl mulExpr (Lit 1) exprs
-  Div -> foldl divExpr (head exprs) (tail exprs)
+  Add -> foldl (evalBinOp evalSum) (Lit 0) exprs
+  Sub -> foldl (evalBinOp evalSub) (head exprs) (tail exprs)
+  Mul -> foldl (evalBinOp evalMul) (Lit 1) exprs
+  Div -> foldl (evalBinOp evalDiv) (head exprs) (tail exprs)
 eval (LVal (Error e:_)) = Error e
 eval _ = Error "invalid expression"
 
