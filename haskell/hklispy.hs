@@ -78,6 +78,11 @@ eval (LVal (Symbol s:exprs)) = case s of
 eval (LVal (Error e:_)) = Error e
 eval _ = Error "invalid expression"
 
+printExpr :: Expr -> String
+printExpr (Lit a) = show a
+printExpr (Error e) = "Error: " ++ e
+printExpr _ = "Can not print this expression"
+
 main :: IO ()
 main = do
   putStr "lispy> "
@@ -85,6 +90,6 @@ main = do
   input <- getLine
   putStrLn (case parse program "(source)" input of
                  Left _ -> "Error parsing input"
-                 Right ast -> show (eval ast))
+                 Right ast -> printExpr (eval ast))
   main
 
