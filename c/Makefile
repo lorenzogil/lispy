@@ -1,7 +1,7 @@
 CFLAGS=-std=c99 -Wall
 DEPS=mpc.h
 OBJ=clispy.o mpc.o
-LIBS=-ledit
+LIBS=-lreadline
 
 %.o: %.c $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)

@@ -1,8 +1,8 @@
 #include <stdio.h>   /* printf */
 #include <stdlib.h>  /* free */
 
-#include <editline/readline.h> /* readline */
-#include <editline/history.h>  /* add_history */
+#include <readline/readline.h> /* readline */
+#include <readline/history.h>  /* add_history */
 
 #include "mpc.h"
 
